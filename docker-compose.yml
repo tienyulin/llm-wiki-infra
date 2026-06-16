@@ -1,0 +1,56 @@
+# Shared infrastructure for the LLM Wiki platform: one MinIO + one Postgres
+# (pgvector) that every service connects to over a shared docker network.
+#
+# Start this ONCE, then start any/all services (they attach to llm-wiki-net):
+#   docker compose up -d
+#
+# Services reach these as hostnames `minio` and `pg` (their compose env already
+# defaults to MINIO_ENDPOINT=minio:9000 and PG_DSN=...@pg:5432). This owns the
+# data volumes and the network — `docker compose down -v` wipes all shared data.
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: llm-wiki-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: minio server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks: [llm-wiki-net]
+
+  pg:
+    image: pgvector/pgvector:pg16
+    container_name: llm-wiki-pg
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${PG_USER:-wiki}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-wikipass}
+      POSTGRES_DB: ${PG_DATABASE:-wiki}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-wiki} -d ${PG_DATABASE:-wiki}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [llm-wiki-net]
+
+volumes:
+  minio_data:
+  pg_data:
+
+# Fixed network name so the service composes can attach with `external: true`.
+networks:
+  llm-wiki-net:
+    name: llm-wiki-net
