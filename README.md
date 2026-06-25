@@ -1,5 +1,7 @@
 # llm-wiki-infra
 
+> 👉 想看這個服務**實際怎麼運作（含真實紀錄）**：[docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md)。
+
 [LLM Wiki 平台](https://github.com/tienyulin/llm-wiki-mcp)的**共用基礎設施（shared
 infrastructure）**：一套 **MinIO**（物件儲存，存 wiki 檔案）+ 一套 **Postgres
 （含 pgvector 向量擴充）**（搜尋索引），跑在共用的 docker 網路 `llm-wiki-net` 上。
